@@ -1,0 +1,89 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Required for posting notifications on Android 13+ (API 33+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Required for scheduling exact alarms on Android 12+ (API 31+) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- Required for rescheduling alarms after device reboot -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Required to keep CPU awake while processing alarm broadcasts -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Required for battery optimisation exemption request -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application>
+
+        <!--
+            NotificationInitProvider fires before Application.onCreate() so the
+            JsbBridgeWrapper listener is registered before the first JS frame
+            executes, mirroring the ShareInitProvider pattern.
+        -->
+        <provider
+            android:name="com.cocos.notification.NotificationInitProvider"
+            android:authorities="${applicationId}.notificationinit"
+            android:exported="false" />
+
+        <!--
+            NotificationReceiver — receives AlarmManager broadcasts and posts
+            the system notification via NotificationManagerCompat.
+            Not exported: only this app's alarms should trigger it.
+        -->
+        <receiver
+            android:name="com.cocos.notification.NotificationReceiver"
+            android:exported="false" />
+
+        <!--
+            CancelNotificationReceiver — receives the delete-intent broadcast
+            when the user swipes away a notification, forwarding a
+            notificationDismissed event to JS.
+            Not exported: only this app's pending intents should trigger it.
+        -->
+        <receiver
+            android:name="com.cocos.notification.CancelNotificationReceiver"
+            android:exported="false" />
+
+        <!--
+            BootReceiver — reschedules persisted alarms after device reboot.
+            Requires RECEIVE_BOOT_COMPLETED permission.
+        -->
+        <receiver
+            android:name="com.cocos.notification.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!--
+            ResultActivity — transparent trampoline launched by tapping a
+            notification.  Copies notification extras into the main game
+            launch intent then finishes, so the game receives them.
+            Not exported: only this app's PendingIntents should open it.
+        -->
+        <activity
+            android:name="com.cocos.notification.ResultActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:taskAffinity=""
+            android:excludeFromRecents="true" />
+
+        <!--
+            PermissionRequestActivity — tiny transparent activity used to
+            call ActivityCompat.requestPermissions() for POST_NOTIFICATIONS,
+            since Cocos extensions have no onRequestPermissionsResult hook.
+            Not exported: only launched programmatically from this library.
+        -->
+        <activity
+            android:name="com.cocos.notification.PermissionRequestActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:taskAffinity=""
+            android:excludeFromRecents="true" />
+
+    </application>
+
+</manifest>
